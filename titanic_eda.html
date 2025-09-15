@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Titanic Disaster — In‑Browser EDA</title>
+  <meta name="description" content="Self‑contained EDA for the Titanic dataset. Drop this file (and CSVs) into your GitHub Pages repo and it computes charts in the browser.">
+  <style>
+    :root { --bg:#0b0b0b; --fg:#f5f5f7; --muted:#9aa0a6; --card:#151515; --line:#262626; --accent:#6ea8fe; }
+    * { box-sizing: border-box; }
+    html, body { margin:0; padding:0; background:#0b0b0b; color:var(--fg); font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    header { padding: 28px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,11,11,.85); backdrop-filter: blur(6px); }
+    header h1 { margin:0 0 6px; font-size: clamp(20px, 3vw, 28px); }
+    header p { margin:0; color:var(--muted); }
+    main { max-width: 1200px; margin: 0 auto; padding: 24px; }
+    .grid { display:grid; gap:18px; grid-template-columns: 1fr; }
+    @media (min-width: 900px) { .grid.two { grid-template-columns: 1fr 1fr; } .grid.three { grid-template-columns: 1fr 1fr 1fr; } }
+    .card { background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 16px 16px; }
+    .card h2, .card h3 { margin: 0 0 10px; font-size: 18px; }
+    .kpis { display:grid; gap:12px; grid-template-columns: repeat(2, 1fr); }
+    @media (min-width: 700px){ .kpis{ grid-template-columns: repeat(4, 1fr);} }
+    .kpi { background:#121212; border:1px solid var(--line); border-radius: 12px; padding:12px; }
+    .kpi .label { color:var(--muted); font-size:12px; }
+    .kpi .value { font-size: 20px; margin-top:6px; font-weight: 600; }
+    .table { width:100%; border-collapse: collapse; font-size: 14px; }
+    .table th, .table td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; }
+    .small { font-size: 12px; color: var(--muted); }
+    .row { display:flex; gap:14px; flex-wrap: wrap; }
+    canvas { width:100%; height: 360px; }
+    .code { background:#0e0e0e; border:1px dashed #333; padding:10px; border-radius: 8px; color:#cbd5e1; overflow:auto; }
+    .pill { display:inline-block; border:1px solid var(--line); padding:3px 8px; border-radius:999px; margin-right:6px; font-size:12px; color:var(--muted); }
+    .heat td { text-align:center; }
+  </style>
+  <!-- External libs from CDN (static, safe for GitHub Pages) -->
+  <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Titanic Disaster — Exploratory Data Analysis (Client‑Side)</h1>
+    <p class="small">Drop this <code>index.html</code> and the CSVs into your repo. Everything runs in the browser — no backend.</p>
+  </header>
+  <main>
+    <div class="card">
+      <div class="row" style="align-items:center; justify-content:space-between">
+        <div>
+          <div class="pill">Matplotlib‑free</div>
+          <div class="pill">Chart.js</div>
+          <div class="pill">Papa Parse</div>
+        </div>
+        <div class="small">Configured CSV paths: <code id="csv-paths">train.csv, test.csv, gender_submission.csv</code></div>
+      </div>
+      <div class="kpis" style="margin-top:12px">
+        <div class="kpi"><div class="label">Rows × Columns</div><div class="value" id="kpi-shape">—</div></div>
+        <div class="kpi"><div class="label">Overall Survival Rate</div><div class="value" id="kpi-survival">—</div></div>
+        <div class="kpi"><div class="label">Best Pclass</div><div class="value" id="kpi-best-pclass">—</div></div>
+        <div class="kpi"><div class="label">Top Sex by Survival</div><div class="value" id="kpi-top-sex">—</div></div>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card">
+        <h2>Target Distribution</h2>
+        <canvas id="chartTarget"></canvas>
+      </div>
+      <div class="card">
+        <h2>Fare Distribution (log X)</h2>
+        <canvas id="chartFare"></canvas>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card">
+        <h2>Survival Rate by Sex</h2>
+        <canvas id="chartSex"></canvas>
+      </div>
+      <div class="card">
+        <h2>Survival Rate by Pclass</h2>
+        <canvas id="chartPclass"></canvas>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card">
+        <h2>Survival Rate by Embarked</h2>
+        <canvas id="chartEmbarked"></canvas>
+      </div>
+      <div class="card">
+        <h2>Survival Rate by Family Size</h2>
+        <canvas id="chartFamily"></canvas>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card">
+        <h2>Age Distributions by Outcome</h2>
+        <canvas id="chartAge"></canvas>
+      </div>
+      <div class="card">
+        <h2>Missingness by Column</h2>
+        <table class="table" id="tbl-missing"><thead><tr><th>Column</th><th>Missing</th><th>%</th></tr></thead><tbody></tbody></table>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h2>Correlation Heatmap (Numeric)</h2>
+      <table class="table heat" id="tbl-corr"></table>
+      <p class="small">Pearson correlation. Colored by magnitude; negative values tinted accordingly.</p>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <h3>How to use on GitHub Pages</h3>
+      <ol>
+        <li>Put this file as <code>docs/index.html</code> in your repo.</li>
+        <li>Add your Kaggle CSVs (<code>train.csv</code>, <code>test.csv</code>, <code>gender_submission.csv</code>) next to it (in the same <code>docs/</code> folder).</li>
+        <li>Enable Pages: Settings → Pages → Deploy from a branch → <b>main</b> and folder <b>/docs</b>.</li>
+      </ol>
+      <p class="small">If your files are in <code>docs/data/</code>, update the paths in the <code>CONFIG</code> section below.</p>
+    </div>
+  </main>
+
+<script>
+// =========================
+// CONFIG — edit paths if needed
+// =========================
+const CONFIG = {
+  TRAIN_CSV: 'train.csv',
+  TEST_CSV: 'test.csv',
+  GENDER_SUB_CSV: 'gender_submission.csv'
+};
+
+document.getElementById('csv-paths').textContent = `${CONFIG.TRAIN_CSV}, ${CONFIG.TEST_CSV}, ${CONFIG.GENDER_SUB_CSV}`;
+
+// =========================
+// Utilities
+// =========================
+const pct = x => `${(x*100).toFixed(1)}%`;
+function groupMean(rows, by, target){
+  const map = new Map();
+  for(const r of rows){
+    const k = r[by] ?? 'Unknown';
+    const y = Number(r[target]);
+    if(Number.isFinite(y)){
+      const o = map.get(k) || {s:0, n:0};
+      o.s += y; o.n += 1; map.set(k, o);
+    }
+  }
+  const out = Array.from(map.entries()).map(([k,v])=>({key:k, val: v.n? v.s/v.n : 0}));
+  out.sort((a,b)=> (a.key> b.key?1:-1));
+  return out;
+}
+function valueCounts(rows, col){
+  const map = new Map();
+  for(const r of rows){
+    const k = r[col];
+    map.set(k, (map.get(k)||0)+1);
+  }
+  return Array.from(map.entries()).map(([k,v])=>({key:k, val:v})).sort((a,b)=> (a.key> b.key?1:-1));
+}
+function missByCol(rows, columns){
+  const n = rows.length; const arr = [];
+  for(const c of columns){
+    let m=0; for(const r of rows){ if(r[c]===undefined || r[c]===null || r[c]==='' ) m++; }
+    arr.push({col:c, missing:m, pct: n? (m/n) : 0});
+  }
+  arr.sort((a,b)=> b.pct - a.pct);
+  return arr;
+}
+function toNumberOrNaN(v){
+  const x = Number(v); return Number.isFinite(x)? x : NaN;
+}
+function pearsonCorr(a, b){
+  let n=0, sx=0, sy=0, sxx=0, syy=0, sxy=0;
+  for(let i=0;i<a.length;i++){
+    const x=a[i], y=b[i];
+    if(Number.isFinite(x) && Number.isFinite(y)){
+      n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y;
+    }
+  }
+  if(n<3) return NaN;
+  const num = n*sxy - sx*sy;
+  const den = Math.sqrt((n*sxx - sx*sx)*(n*syy - sy*sy));
+  return den===0? NaN : num/den;
+}
+function corrMatrix(rows, numericCols){
+  const X = {}; numericCols.forEach(c=> X[c] = rows.map(r=> toNumberOrNaN(r[c])));
+  const M = []; for(let i=0;i<numericCols.length;i++){
+    const row=[]; for(let j=0;j<numericCols.length;j++) row.push(pearsonCorr(X[numericCols[i]], X[numericCols[j]]));
+    M.push(row);
+  }
+  return M;
+}
+function bin(values, min, max, nbins){
+  const step = (max-min)/nbins; const edges = Array.from({length: nbins+1}, (_,i)=> min + i*step);
+  const counts = Array(nbins).fill(0);
+  for(const v of values){ if(Number.isFinite(v) && v>=min && v<=max){ let k=Math.min(nbins-1, Math.floor((v-min)/step)); counts[k]++; } }
+  return {edges, counts};
+}
+
+// =========================
+// Chart helpers
+// =========================
+const charts = {};
+function mkBar(id, labels, data, title, opts={}){
+  const ctx = document.getElementById(id);
+  charts[id]?.destroy?.();
+  charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data, borderWidth: 1 }] },
+    options: { responsive: true, plugins: { legend: { display:false }, title: { display:false, text:title } },
+               scales: { x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'} , ticks: { callback: v => opts.pct? `${(v*100).toFixed(0)}%` : v } } } }
+  });
+}
+function mkLineBar(id, labels, datasets, title){
+  const ctx = document.getElementById(id);
+  charts[id]?.destroy?.();
+  charts[id] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'} } } } });
+}
+
+// =========================
+// Main EDA
+// =========================
+async function loadCSV(path){
+  const res = await fetch(path, {cache:'no-store'});
+  if(!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
+  const text = await res.text();
+  return new Promise((resolve)=> Papa.parse(text, { header:true, dynamicTyping:false, skipEmptyLines:true, complete: r=> resolve(r.data) }));
+}
+
+async function run(){
+  try{
+    const train = await loadCSV(CONFIG.TRAIN_CSV);
+    // Basic shape
+    const cols = Object.keys(train[0] || {});
+    document.getElementById('kpi-shape').textContent = `${train.length} × ${cols.length}`;
+
+    // Fill Embarked unknown for grouping
+    for(const r of train){ if(!r['Embarked']) r['Embarked'] = 'Unknown'; }
+
+    // Derived
+    for(const r of train){ r['SibSp'] = toNumberOrNaN(r['SibSp']); r['Parch']=toNumberOrNaN(r['Parch']); r['FamilySize'] = (r['SibSp']||0) + (r['Parch']||0) + 1; }
+
+    // Target rate
+    const surv = train.map(r=> Number(r['Survived']));
+    const overall = surv.filter(x=> Number.isFinite(x)).reduce((a,b)=>a+b,0) / surv.filter(x=> Number.isFinite(x)).length;
+    document.getElementById('kpi-survival').textContent = pct(overall);
+
+    // Target distribution
+    const targ = valueCounts(train, 'Survived');
+    mkBar('chartTarget', targ.map(d=> String(d.key)), targ.map(d=> d.val), 'Target');
+
+    // Fare (hist, log X represented by binning log10)
+    const fares = train.map(r=> toNumberOrNaN(r['Fare'])).filter(Number.isFinite);
+    const logVals = fares.map(v=> Math.log10(Math.max(v, 1e-9)));
+    const H = bin(logVals, Math.floor(Math.min(...logVals)), Math.ceil(Math.max(...logVals)), 30);
+    const labelsFare = H.edges.slice(0,-1).map((e,i)=> (10**H.edges[i]).toFixed(2));
+    mkBar('chartFare', labelsFare, H.counts, 'Fare (log bins)');
+
+    // Survival by Sex
+    const sex = groupMean(train, 'Sex', 'Survived');
+    const topSex = sex.slice().sort((a,b)=> b.val-a.val)[0];
+    document.getElementById('kpi-top-sex').textContent = topSex? `${topSex.key} (${pct(topSex.val)})` : '—';
+    mkBar('chartSex', sex.map(d=> d.key), sex.map(d=> d.val), 'By Sex', {pct:true});
+
+    // Survival by Pclass
+    const pclass = groupMean(train, 'Pclass', 'Survived');
+    const bestP = pclass.slice().sort((a,b)=> b.val-a.val)[0];
+    document.getElementById('kpi-best-pclass').textContent = bestP? `${bestP.key} (${pct(bestP.val)})` : '—';
+    mkBar('chartPclass', pclass.map(d=> String(d.key)), pclass.map(d=> d.val), 'By Pclass', {pct:true});
+
+    // Survival by Embarked
+    const embarked = groupMean(train, 'Embarked', 'Survived');
+    mkBar('chartEmbarked', embarked.map(d=> d.key), embarked.map(d=> d.val), 'By Embarked', {pct:true});
+
+    // Survival by FamilySize
+    const fam = groupMean(train, 'FamilySize', 'Survived');
+    mkBar('chartFamily', fam.map(d=> String(d.key)), fam.map(d=> d.val), 'By FamilySize', {pct:true});
+
+    // Age distributions (two datasets, same bins)
+    const agesSurv = train.filter(r=> Number(r['Survived'])===1).map(r=> toNumberOrNaN(r['Age'])).filter(Number.isFinite);
+    const agesNo = train.filter(r=> Number(r['Survived'])===0).map(r=> toNumberOrNaN(r['Age'])).filter(Number.isFinite);
+    const minA=0, maxA=80, nb=20; const B1 = bin(agesSurv, minA, maxA, nb); const B0 = bin(agesNo, minA, maxA, nb);
+    const edges = B1.edges.slice(0,-1).map(e=> `${Math.round(e)}-${Math.round(e+ (maxA-minA)/nb)}`);
+    mkLineBar('chartAge', edges, [
+      { label:'Survived', data: B1.counts, borderWidth:1 },
+      { label:'Not Survived', data: B0.counts, borderWidth:1 }
+    ], 'Age by Outcome');
+
+    // Missingness table
+    const miss = missByCol(train, cols);
+    const tb = document.querySelector('#tbl-missing tbody'); tb.innerHTML='';
+    for(const m of miss){
+      const tr = document.createElement('tr');
+      tr.innerHTML = `<td>${m.col}</td><td>${m.missing}</td><td>${(m.pct*100).toFixed(2)}%</td>`;
+      tb.appendChild(tr);
+    }
+
+    // Correlation matrix
+    const numeric = cols.filter(c=> train.some(r=> Number.isFinite(toNumberOrNaN(r[c]))));
+    const C = corrMatrix(train, numeric);
+    const tbl = document.getElementById('tbl-corr');
+    // header
+    let thead = '<thead><tr><th></th>' + numeric.map(c=> `<th>${c}</th>`).join('') + '</tr></thead>';
+    let tbody = '<tbody>';
+    function colorFor(v){
+      if(!Number.isFinite(v)) return '#222';
+      // map -1..1 to color; negative = bluish, positive = reddish; intensity by |v|
+      const a = Math.min(1, Math.abs(v));
+      const r = v>0? Math.round(255*a) : 40;
+      const b = v<0? Math.round(255*a) : 40;
+      const g = 40;
+      return `rgb(${r},${g},${b})`;
+    }
+    for(let i=0;i<numeric.length;i++){
+      tbody += `<tr><th>${numeric[i]}</th>`;
+      for(let j=0;j<numeric.length;j++){
+        const v = C[i][j];
+        const bg = colorFor(v); const fg = Math.abs(v)>=0.5? '#fff':'#ddd';
+        tbody += `<td style="background:${bg}; color:${fg}">${Number.isFinite(v)? v.toFixed(2):''}</td>`;
+      }
+      tbody += '</tr>';
+    }
+    tbody += '</tbody>';
+    tbl.innerHTML = thead + tbody;
+
+  }catch(err){
+    console.error(err);
+    alert('Error while loading or processing CSVs: ' + err.message + '\nMake sure your CSV paths in CONFIG match files placed next to index.html (or adjust).');
+  }
+}
+
+run();
+</script>
+</body>
+</html>
