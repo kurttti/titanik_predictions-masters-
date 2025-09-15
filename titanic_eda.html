@@ -1,139 +1,129 @@
 <!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Titanic Disaster — In‑Browser EDA</title>
-  <meta name="description" content="Self‑contained EDA for the Titanic dataset. Drop this file (and CSVs) into your GitHub Pages repo and it computes charts in the browser.">
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Titanic — One‑File EDA (Train + Test)</title>
+  <meta name="description" content="Single HTML file for client‑side EDA of the Titanic dataset. Upload train.csv (required) and test.csv (optional)." />
   <style>
-    :root { --bg:#0b0b0b; --fg:#f5f5f7; --muted:#9aa0a6; --card:#151515; --line:#262626; --accent:#6ea8fe; }
+    :root { --bg:#0b0b0b; --fg:#f5f5f7; --muted:#9aa0a6; --card:#151515; --line:#262626; }
     * { box-sizing: border-box; }
-    html, body { margin:0; padding:0; background:#0b0b0b; color:var(--fg); font: 16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
-    header { padding: 28px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,11,11,.85); backdrop-filter: blur(6px); }
-    header h1 { margin:0 0 6px; font-size: clamp(20px, 3vw, 28px); }
+    html, body { margin:0; padding:0; background:var(--bg); color:var(--fg); font:16px/1.55 system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; }
+    header { padding:28px 24px; border-bottom:1px solid var(--line); position:sticky; top:0; background:rgba(11,11,11,.85); backdrop-filter: blur(6px); }
+    header h1 { margin:0 0 6px; font-size:clamp(20px,3vw,28px); }
     header p { margin:0; color:var(--muted); }
-    main { max-width: 1200px; margin: 0 auto; padding: 24px; }
-    .grid { display:grid; gap:18px; grid-template-columns: 1fr; }
-    @media (min-width: 900px) { .grid.two { grid-template-columns: 1fr 1fr; } .grid.three { grid-template-columns: 1fr 1fr 1fr; } }
-    .card { background: var(--card); border:1px solid var(--line); border-radius: 14px; padding: 16px 16px; }
-    .card h2, .card h3 { margin: 0 0 10px; font-size: 18px; }
-    .kpis { display:grid; gap:12px; grid-template-columns: repeat(2, 1fr); }
-    @media (min-width: 700px){ .kpis{ grid-template-columns: repeat(4, 1fr);} }
-    .kpi { background:#121212; border:1px solid var(--line); border-radius: 12px; padding:12px; }
+    main { max-width:1200px; margin:0 auto; padding:24px; }
+    .grid { display:grid; gap:18px; grid-template-columns:1fr; }
+    @media (min-width: 900px) { .grid.two { grid-template-columns:1fr 1fr; } .grid.three { grid-template-columns:1fr 1fr 1fr; } }
+    .card { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:16px; }
+    .card h2, .card h3 { margin:0 0 10px; font-size:18px; }
+    .kpis { display:grid; gap:12px; grid-template-columns:repeat(2,1fr); }
+    @media (min-width:700px){ .kpis{ grid-template-columns:repeat(4,1fr);} }
+    .kpi { background:#121212; border:1px solid var(--line); border-radius:12px; padding:12px; }
     .kpi .label { color:var(--muted); font-size:12px; }
-    .kpi .value { font-size: 20px; margin-top:6px; font-weight: 600; }
-    .table { width:100%; border-collapse: collapse; font-size: 14px; }
+    .kpi .value { font-size:20px; margin-top:6px; font-weight:600; }
+    .table { width:100%; border-collapse:collapse; font-size:14px; }
     .table th, .table td { border-bottom:1px solid var(--line); padding:8px 10px; text-align:left; }
-    .small { font-size: 12px; color: var(--muted); }
-    .row { display:flex; gap:14px; flex-wrap: wrap; }
-    canvas { width:100%; height: 360px; }
-    .code { background:#0e0e0e; border:1px dashed #333; padding:10px; border-radius: 8px; color:#cbd5e1; overflow:auto; }
-    .pill { display:inline-block; border:1px solid var(--line); padding:3px 8px; border-radius:999px; margin-right:6px; font-size:12px; color:var(--muted); }
+    .small { font-size:12px; color:var(--muted); }
+    .row { display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+    canvas { width:100%; height:360px; }
     .heat td { text-align:center; }
+    button { background:#1d4ed8; color:#fff; border:0; border-radius:10px; padding:10px 14px; cursor:pointer; }
+    button[disabled] { opacity:.6; cursor:not-allowed; }
+    input[type=file] { background:#0e0e0e; border:1px solid var(--line); padding:8px; border-radius:8px; color:#d1d5db; }
+    .pill { display:inline-block; border:1px solid var(--line); border-radius:999px; padding:3px 8px; font-size:12px; color:var(--muted); margin-right:6px; }
   </style>
-  <!-- External libs from CDN (static, safe for GitHub Pages) -->
   <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Titanic Disaster — Exploratory Data Analysis (Client‑Side)</h1>
-    <p class="small">Drop this <code>index.html</code> and the CSVs into your repo. Everything runs in the browser — no backend.</p>
+    <h1>Titanic — Client‑Side EDA (Train & Test)</h1>
+    <p class="small">Upload <code>train.csv</code> (required) and <code>test.csv</code> (optional). All analysis runs in your browser — perfect for GitHub Pages.</p>
   </header>
+
   <main>
     <div class="card">
-      <div class="row" style="align-items:center; justify-content:space-between">
-        <div>
-          <div class="pill">Matplotlib‑free</div>
-          <div class="pill">Chart.js</div>
-          <div class="pill">Papa Parse</div>
+      <div class="row">
+        <label><strong>Upload train.csv</strong></label>
+        <input type="file" id="fileTrain" accept=".csv" />
+        <label><strong>Upload test.csv (optional)</strong></label>
+        <input type="file" id="fileTest" accept=".csv" />
+        <button id="runBtn" disabled>Run EDA</button>
+        <span id="status" class="small"></span>
+      </div>
+      <p class="small" style="margin-top:8px">Tip: Put this file at <code>docs/index.html</code> in your repo and enable Pages. End‑users just open the site, upload the CSVs, and see results.</p>
+    </div>
+
+    <div class="card" style="margin-top:18px">
+      <div class="kpis">
+        <div class="kpi"><div class="label">Train Rows × Cols</div><div class="value" id="kpi-train-shape">—</div></div>
+        <div class="kpi"><div class="label">Overall Survival Rate (train)</div><div class="value" id="kpi-survival">—</div></div>
+        <div class="kpi"><div class="label">Best Pclass (train)</div><div class="value" id="kpi-best-pclass">—</div></div>
+        <div class="kpi"><div class="label">Top Sex by Survival (train)</div><div class="value" id="kpi-top-sex">—</div></div>
+      </div>
+      <div class="kpis" style="margin-top:10px">
+        <div class="kpi"><div class="label">Test Rows × Cols</div><div class="value" id="kpi-test-shape">—</div></div>
+        <div class="kpi"><div class="label">Numeric Cols (train)</div><div class="value" id="kpi-numeric">—</div></div>
+        <div class="kpi"><div class="label">Missing ≥30% (train)</div><div class="value" id="kpi-high-miss">—</div></div>
+        <div class="kpi"><div class="label">Generated</div><div class="value" id="kpi-generated">—</div></div>
+      </div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card"><h2>Target Distribution (train)</h2><canvas id="chartTarget"></canvas></div>
+      <div class="card"><h2>Fare Distribution (train, log‑binned)</h2><canvas id="chartFare"></canvas></div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card"><h2>Survival Rate by Sex (train)</h2><canvas id="chartSex"></canvas></div>
+      <div class="card"><h2>Survival Rate by Pclass (train)</h2><canvas id="chartPclass"></canvas></div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card"><h2>Survival Rate by Embarked (train)</h2><canvas id="chartEmbarked"></canvas></div>
+      <div class="card"><h2>Survival Rate by Family Size (train)</h2><canvas id="chartFamily"></canvas></div>
+    </div>
+
+    <div class="grid two" style="margin-top:18px">
+      <div class="card"><h2>Age Distributions by Outcome (train)</h2><canvas id="chartAgeOutcome"></canvas></div>
+      <div class="card"><h2>Missingness by Column</h2>
+        <div class="grid two">
+          <div>
+            <h3 class="small">Train</h3>
+            <table class="table" id="tbl-miss-train"><thead><tr><th>Column</th><th>Missing</th><th>%</th></tr></thead><tbody></tbody></table>
+          </div>
+          <div>
+            <h3 class="small">Test</h3>
+            <table class="table" id="tbl-miss-test"><thead><tr><th>Column</th><th>Missing</th><th>%</th></tr></thead><tbody></tbody></table>
+          </div>
         </div>
-        <div class="small">Configured CSV paths: <code id="csv-paths">train.csv, test.csv, gender_submission.csv</code></div>
-      </div>
-      <div class="kpis" style="margin-top:12px">
-        <div class="kpi"><div class="label">Rows × Columns</div><div class="value" id="kpi-shape">—</div></div>
-        <div class="kpi"><div class="label">Overall Survival Rate</div><div class="value" id="kpi-survival">—</div></div>
-        <div class="kpi"><div class="label">Best Pclass</div><div class="value" id="kpi-best-pclass">—</div></div>
-        <div class="kpi"><div class="label">Top Sex by Survival</div><div class="value" id="kpi-top-sex">—</div></div>
-      </div>
-    </div>
-
-    <div class="grid two" style="margin-top:18px">
-      <div class="card">
-        <h2>Target Distribution</h2>
-        <canvas id="chartTarget"></canvas>
-      </div>
-      <div class="card">
-        <h2>Fare Distribution (log X)</h2>
-        <canvas id="chartFare"></canvas>
-      </div>
-    </div>
-
-    <div class="grid two" style="margin-top:18px">
-      <div class="card">
-        <h2>Survival Rate by Sex</h2>
-        <canvas id="chartSex"></canvas>
-      </div>
-      <div class="card">
-        <h2>Survival Rate by Pclass</h2>
-        <canvas id="chartPclass"></canvas>
-      </div>
-    </div>
-
-    <div class="grid two" style="margin-top:18px">
-      <div class="card">
-        <h2>Survival Rate by Embarked</h2>
-        <canvas id="chartEmbarked"></canvas>
-      </div>
-      <div class="card">
-        <h2>Survival Rate by Family Size</h2>
-        <canvas id="chartFamily"></canvas>
-      </div>
-    </div>
-
-    <div class="grid two" style="margin-top:18px">
-      <div class="card">
-        <h2>Age Distributions by Outcome</h2>
-        <canvas id="chartAge"></canvas>
-      </div>
-      <div class="card">
-        <h2>Missingness by Column</h2>
-        <table class="table" id="tbl-missing"><thead><tr><th>Column</th><th>Missing</th><th>%</th></tr></thead><tbody></tbody></table>
       </div>
     </div>
 
     <div class="card" style="margin-top:18px">
-      <h2>Correlation Heatmap (Numeric)</h2>
+      <h2>Correlation Heatmap (train, numeric)</h2>
       <table class="table heat" id="tbl-corr"></table>
-      <p class="small">Pearson correlation. Colored by magnitude; negative values tinted accordingly.</p>
+      <p class="small">Pearson correlation; color encodes magnitude (red +, blue −).</p>
     </div>
 
     <div class="card" style="margin-top:18px">
-      <h3>How to use on GitHub Pages</h3>
-      <ol>
-        <li>Put this file as <code>docs/index.html</code> in your repo.</li>
-        <li>Add your Kaggle CSVs (<code>train.csv</code>, <code>test.csv</code>, <code>gender_submission.csv</code>) next to it (in the same <code>docs/</code> folder).</li>
-        <li>Enable Pages: Settings → Pages → Deploy from a branch → <b>main</b> and folder <b>/docs</b>.</li>
-      </ol>
-      <p class="small">If your files are in <code>docs/data/</code>, update the paths in the <code>CONFIG</code> section below.</p>
+      <h2>Train vs Test — Distribution Comparison</h2>
+      <div class="grid two">
+        <div><h3>Age (all rows)</h3><canvas id="chartAgeTT"></canvas></div>
+        <div><h3>Fare (all rows)</h3><canvas id="chartFareTT"></canvas></div>
+      </div>
+      <div class="grid three" style="margin-top:12px">
+        <div><h3>Pclass</h3><canvas id="chartPclassTT"></canvas></div>
+        <div><h3>Sex</h3><canvas id="chartSexTT"></canvas></div>
+        <div><h3>Embarked</h3><canvas id="chartEmbarkedTT"></canvas></div>
+      </div>
+      <p class="small">These charts help spot simple train/test shifts. (Test is optional; if not provided, only train is shown.)</p>
     </div>
   </main>
 
 <script>
-// =========================
-// CONFIG — edit paths if needed
-// =========================
-const CONFIG = {
-  TRAIN_CSV: 'train.csv',
-  TEST_CSV: 'test.csv',
-  GENDER_SUB_CSV: 'gender_submission.csv'
-};
-
-document.getElementById('csv-paths').textContent = `${CONFIG.TRAIN_CSV}, ${CONFIG.TEST_CSV}, ${CONFIG.GENDER_SUB_CSV}`;
-
-// =========================
-// Utilities
-// =========================
+// ===== Utilities =====
 const pct = x => `${(x*100).toFixed(1)}%`;
 function groupMean(rows, by, target){
   const map = new Map();
@@ -151,185 +141,185 @@ function groupMean(rows, by, target){
 }
 function valueCounts(rows, col){
   const map = new Map();
-  for(const r of rows){
-    const k = r[col];
-    map.set(k, (map.get(k)||0)+1);
-  }
+  for(const r of rows){ const k = r[col] ?? 'Unknown'; map.set(k, (map.get(k)||0)+1); }
   return Array.from(map.entries()).map(([k,v])=>({key:k, val:v})).sort((a,b)=> (a.key> b.key?1:-1));
 }
 function missByCol(rows, columns){
   const n = rows.length; const arr = [];
-  for(const c of columns){
-    let m=0; for(const r of rows){ if(r[c]===undefined || r[c]===null || r[c]==='' ) m++; }
-    arr.push({col:c, missing:m, pct: n? (m/n) : 0});
-  }
-  arr.sort((a,b)=> b.pct - a.pct);
-  return arr;
+  for(const c of columns){ let m=0; for(const r of rows){ if(r[c]===undefined || r[c]===null || r[c]==='' ) m++; } arr.push({col:c, missing:m, pct: n? (m/n) : 0}); }
+  arr.sort((a,b)=> b.pct - a.pct); return arr;
 }
-function toNumberOrNaN(v){
-  const x = Number(v); return Number.isFinite(x)? x : NaN;
-}
-function pearsonCorr(a, b){
-  let n=0, sx=0, sy=0, sxx=0, syy=0, sxy=0;
-  for(let i=0;i<a.length;i++){
-    const x=a[i], y=b[i];
-    if(Number.isFinite(x) && Number.isFinite(y)){
-      n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y;
-    }
-  }
-  if(n<3) return NaN;
-  const num = n*sxy - sx*sy;
-  const den = Math.sqrt((n*sxx - sx*sx)*(n*syy - sy*sy));
-  return den===0? NaN : num/den;
-}
-function corrMatrix(rows, numericCols){
-  const X = {}; numericCols.forEach(c=> X[c] = rows.map(r=> toNumberOrNaN(r[c])));
-  const M = []; for(let i=0;i<numericCols.length;i++){
-    const row=[]; for(let j=0;j<numericCols.length;j++) row.push(pearsonCorr(X[numericCols[i]], X[numericCols[j]]));
-    M.push(row);
-  }
-  return M;
-}
-function bin(values, min, max, nbins){
-  const step = (max-min)/nbins; const edges = Array.from({length: nbins+1}, (_,i)=> min + i*step);
-  const counts = Array(nbins).fill(0);
-  for(const v of values){ if(Number.isFinite(v) && v>=min && v<=max){ let k=Math.min(nbins-1, Math.floor((v-min)/step)); counts[k]++; } }
-  return {edges, counts};
-}
+function toNum(v){ const x = Number(v); return Number.isFinite(x)? x : NaN; }
+function pearsonCorr(a, b){ let n=0, sx=0, sy=0, sxx=0, syy=0, sxy=0; for(let i=0;i<a.length;i++){ const x=a[i], y=b[i]; if(Number.isFinite(x)&&Number.isFinite(y)){ n++; sx+=x; sy+=y; sxx+=x*x; syy+=y*y; sxy+=x*y; }} if(n<3) return NaN; const num = n*sxy - sx*sy; const den = Math.sqrt((n*sxx - sx*sx)*(n*syy - sy*sy)); return den===0? NaN : num/den; }
+function corrMatrix(rows, numericCols){ const X={}; numericCols.forEach(c=> X[c]=rows.map(r=> toNum(r[c]))); const M=[]; for(let i=0;i<numericCols.length;i++){ const row=[]; for(let j=0;j<numericCols.length;j++) row.push(pearsonCorr(X[numericCols[i]], X[numericCols[j]])); M.push(row);} return M; }
+function bin(values, min, max, nbins){ const step=(max-min)/nbins; const edges=Array.from({length:nbins+1},(_,i)=>min+i*step); const counts=Array(nbins).fill(0); for(const v of values){ if(Number.isFinite(v)&&v>=min&&v<=max){ let k=Math.min(nbins-1, Math.floor((v-min)/step)); counts[k]++; } } return {edges, counts}; }
 
-// =========================
-// Chart helpers
-// =========================
+// ===== Charts =====
 const charts = {};
-function mkBar(id, labels, data, title, opts={}){
-  const ctx = document.getElementById(id);
-  charts[id]?.destroy?.();
-  charts[id] = new Chart(ctx, {
-    type: 'bar',
-    data: { labels, datasets: [{ data, borderWidth: 1 }] },
-    options: { responsive: true, plugins: { legend: { display:false }, title: { display:false, text:title } },
-               scales: { x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'} , ticks: { callback: v => opts.pct? `${(v*100).toFixed(0)}%` : v } } } }
-  });
-}
-function mkLineBar(id, labels, datasets, title){
-  const ctx = document.getElementById(id);
-  charts[id]?.destroy?.();
-  charts[id] = new Chart(ctx, { type: 'bar', data: { labels, datasets }, options: { responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'} } } } });
-}
+function mkBar(id, labels, data, opts={}){ const ctx=document.getElementById(id); charts[id]?.destroy?.(); charts[id]=new Chart(ctx,{ type:'bar', data:{ labels, datasets:[{ data, borderWidth:1 }] }, options:{ responsive:true, plugins:{ legend:{display:false} }, scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'}, ticks:{ callback:v=> opts.pct? `${(v*100).toFixed(0)}%` : v } } } } }); }
+function mkDouble(id, labels, dsA, dsB){ const ctx=document.getElementById(id); charts[id]?.destroy?.(); charts[id]=new Chart(ctx,{ type:'bar', data:{ labels, datasets:[ dsA, dsB ].filter(Boolean) }, options:{ responsive:true, plugins:{ legend:{ position:'top' } }, scales:{ x:{ grid:{color:'rgba(255,255,255,.06)'} }, y:{ beginAtZero:true, grid:{color:'rgba(255,255,255,.06)'} } } } }); }
 
-// =========================
-// Main EDA
-// =========================
-async function loadCSV(path){
-  const res = await fetch(path, {cache:'no-store'});
-  if(!res.ok) throw new Error(`Failed to fetch ${path}: ${res.status}`);
-  const text = await res.text();
-  return new Promise((resolve)=> Papa.parse(text, { header:true, dynamicTyping:false, skipEmptyLines:true, complete: r=> resolve(r.data) }));
-}
+// ===== File handling =====
+const elTrain = document.getElementById('fileTrain');
+const elTest  = document.getElementById('fileTest');
+const btn     = document.getElementById('runBtn');
+const statusEl= document.getElementById('status');
 
-async function run(){
+function updateBtn(){ btn.disabled = !elTrain.files?.length; }
+elTrain.addEventListener('change', updateBtn);
+elTest.addEventListener('change', ()=>{});
+
+btn.addEventListener('click', ()=>{
+  if(!elTrain.files?.length) return;
+  statusEl.textContent = 'Parsing CSVs…'; btn.disabled = true;
+  Papa.parse(elTrain.files[0], { header:true, dynamicTyping:false, skipEmptyLines:true, complete: trainRes => {
+    if(elTest.files?.length){
+      Papa.parse(elTest.files[0], { header:true, dynamicTyping:false, skipEmptyLines:true, complete: testRes => runEDA(trainRes.data, testRes.data), error: e=> onErr(e) });
+    } else {
+      runEDA(trainRes.data, null);
+    }
+  }, error: e=> onErr(e) });
+});
+
+function onErr(e){ alert('Failed to parse CSV: '+e.message); statusEl.textContent=''; btn.disabled=false; }
+
+// ===== EDA =====
+function runEDA(train, test){
   try{
-    const train = await loadCSV(CONFIG.TRAIN_CSV);
-    // Basic shape
-    const cols = Object.keys(train[0] || {});
-    document.getElementById('kpi-shape').textContent = `${train.length} × ${cols.length}`;
+    if(!train?.length) throw new Error('train.csv is empty or invalid');
+    statusEl.textContent = 'Running EDA…';
 
-    // Fill Embarked unknown for grouping
-    for(const r of train){ if(!r['Embarked']) r['Embarked'] = 'Unknown'; }
+    // normalize fields
+    const tcols = Object.keys(train[0]);
+    train.forEach(r=>{ r.Embarked = r.Embarked || 'Unknown'; r.SibSp = toNum(r.SibSp); r.Parch = toNum(r.Parch); r.FamilySize = (r.SibSp||0) + (r.Parch||0) + 1; });
+    document.getElementById('kpi-train-shape').textContent = `${train.length} × ${tcols.length}`;
 
-    // Derived
-    for(const r of train){ r['SibSp'] = toNumberOrNaN(r['SibSp']); r['Parch']=toNumberOrNaN(r['Parch']); r['FamilySize'] = (r['SibSp']||0) + (r['Parch']||0) + 1; }
-
-    // Target rate
-    const surv = train.map(r=> Number(r['Survived']));
-    const overall = surv.filter(x=> Number.isFinite(x)).reduce((a,b)=>a+b,0) / surv.filter(x=> Number.isFinite(x)).length;
+    // survival KPI
+    const y = train.map(r=> Number(r.Survived)).filter(Number.isFinite);
+    const overall = y.reduce((a,b)=> a+b, 0) / y.length;
     document.getElementById('kpi-survival').textContent = pct(overall);
 
-    // Target distribution
-    const targ = valueCounts(train, 'Survived');
-    mkBar('chartTarget', targ.map(d=> String(d.key)), targ.map(d=> d.val), 'Target');
-
-    // Fare (hist, log X represented by binning log10)
-    const fares = train.map(r=> toNumberOrNaN(r['Fare'])).filter(Number.isFinite);
-    const logVals = fares.map(v=> Math.log10(Math.max(v, 1e-9)));
-    const H = bin(logVals, Math.floor(Math.min(...logVals)), Math.ceil(Math.max(...logVals)), 30);
-    const labelsFare = H.edges.slice(0,-1).map((e,i)=> (10**H.edges[i]).toFixed(2));
-    mkBar('chartFare', labelsFare, H.counts, 'Fare (log bins)');
-
-    // Survival by Sex
-    const sex = groupMean(train, 'Sex', 'Survived');
-    const topSex = sex.slice().sort((a,b)=> b.val-a.val)[0];
+    // best sex & pclass
+    const sexRate = groupMean(train, 'Sex', 'Survived');
+    const topSex = sexRate.slice().sort((a,b)=> b.val-a.val)[0];
     document.getElementById('kpi-top-sex').textContent = topSex? `${topSex.key} (${pct(topSex.val)})` : '—';
-    mkBar('chartSex', sex.map(d=> d.key), sex.map(d=> d.val), 'By Sex', {pct:true});
-
-    // Survival by Pclass
-    const pclass = groupMean(train, 'Pclass', 'Survived');
-    const bestP = pclass.slice().sort((a,b)=> b.val-a.val)[0];
+    const pclassRate = groupMean(train, 'Pclass', 'Survived');
+    const bestP = pclassRate.slice().sort((a,b)=> b.val-a.val)[0];
     document.getElementById('kpi-best-pclass').textContent = bestP? `${bestP.key} (${pct(bestP.val)})` : '—';
-    mkBar('chartPclass', pclass.map(d=> String(d.key)), pclass.map(d=> d.val), 'By Pclass', {pct:true});
 
-    // Survival by Embarked
-    const embarked = groupMean(train, 'Embarked', 'Survived');
-    mkBar('chartEmbarked', embarked.map(d=> d.key), embarked.map(d=> d.val), 'By Embarked', {pct:true});
+    // missingness (train)
+    const missT = missByCol(train, tcols);
+    fillMiss('#tbl-miss-train', missT);
 
-    // Survival by FamilySize
-    const fam = groupMean(train, 'FamilySize', 'Survived');
-    mkBar('chartFamily', fam.map(d=> String(d.key)), fam.map(d=> d.val), 'By FamilySize', {pct:true});
+    // charts (train)
+    mkBar('chartTarget', valueCounts(train,'Survived').map(d=> String(d.key)), valueCounts(train,'Survived').map(d=> d.val));
 
-    // Age distributions (two datasets, same bins)
-    const agesSurv = train.filter(r=> Number(r['Survived'])===1).map(r=> toNumberOrNaN(r['Age'])).filter(Number.isFinite);
-    const agesNo = train.filter(r=> Number(r['Survived'])===0).map(r=> toNumberOrNaN(r['Age'])).filter(Number.isFinite);
-    const minA=0, maxA=80, nb=20; const B1 = bin(agesSurv, minA, maxA, nb); const B0 = bin(agesNo, minA, maxA, nb);
-    const edges = B1.edges.slice(0,-1).map(e=> `${Math.round(e)}-${Math.round(e+ (maxA-minA)/nb)}`);
-    mkLineBar('chartAge', edges, [
-      { label:'Survived', data: B1.counts, borderWidth:1 },
-      { label:'Not Survived', data: B0.counts, borderWidth:1 }
-    ], 'Age by Outcome');
+    const faresT = train.map(r=> toNum(r.Fare)).filter(Number.isFinite);
+    const logsT = faresT.map(v=> Math.log10(Math.max(v,1e-9)));
+    const Ht = bin(logsT, Math.floor(Math.min(...logsT)), Math.ceil(Math.max(...logsT)), 30);
+    mkBar('chartFare', Ht.edges.slice(0,-1).map((e,i)=> (10**Ht.edges[i]).toFixed(2)), Ht.counts);
 
-    // Missingness table
-    const miss = missByCol(train, cols);
-    const tb = document.querySelector('#tbl-missing tbody'); tb.innerHTML='';
-    for(const m of miss){
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${m.col}</td><td>${m.missing}</td><td>${(m.pct*100).toFixed(2)}%</td>`;
-      tb.appendChild(tr);
+    mkBar('chartSex', sexRate.map(d=> d.key), sexRate.map(d=> d.val), {pct:true});
+    mkBar('chartPclass', pclassRate.map(d=> String(d.key)), pclassRate.map(d=> d.val), {pct:true});
+    mkBar('chartEmbarked', groupMean(train,'Embarked','Survived').map(d=> d.key), groupMean(train,'Embarked','Survived').map(d=> d.val), {pct:true});
+    mkBar('chartFamily', groupMean(train,'FamilySize','Survived').map(d=> String(d.key)), groupMean(train,'FamilySize','Survived').map(d=> d.val), {pct:true});
+
+    const ages1 = train.filter(r=> Number(r.Survived)===1).map(r=> toNum(r.Age)).filter(Number.isFinite);
+    const ages0 = train.filter(r=> Number(r.Survived)===0).map(r=> toNum(r.Age)).filter(Number.isFinite);
+    const minA=0, maxA=80, nb=20; const B1=bin(ages1,minA,maxA,nb), B0=bin(ages0,minA,maxA,nb);
+    const edges=B1.edges.slice(0,-1).map((e,i)=> `${Math.round(e)}-${Math.round(e+(maxA-minA)/nb)}`);
+    mkDouble('chartAgeOutcome', edges, {label:'Survived', data:B1.counts, borderWidth:1}, {label:'Not Survived', data:B0.counts, borderWidth:1});
+
+    // Correlation heatmap (train)
+    const numericT = tcols.filter(c=> train.some(r=> Number.isFinite(toNum(r[c]))));
+    const CT = corrMatrix(train, numericT);
+    renderCorr('#tbl-corr', numericT, CT);
+    document.getElementById('kpi-numeric').textContent = numericT.length;
+
+    // Test (optional)
+    if(Array.isArray(test) && test.length){
+      const testCols = Object.keys(test[0]);
+      test.forEach(r=>{ r.Embarked = r.Embarked || 'Unknown'; r.SibSp = toNum(r.SibSp); r.Parch = toNum(r.Parch); r.FamilySize = (r.SibSp||0) + (r.Parch||0) + 1; });
+      document.getElementById('kpi-test-shape').textContent = `${test.length} × ${testCols.length}`;
+      fillMiss('#tbl-miss-test', missByCol(test, testCols));
+
+      // Train vs Test overlays
+      const ageTr = train.map(r=> toNum(r.Age)).filter(Number.isFinite);
+      const ageTe = test.map(r=> toNum(r.Age)).filter(Number.isFinite);
+      const minAge = 0, maxAge = 80, nbin = 20;
+      const BAtr = bin(ageTr, minAge, maxAge, nbin), BAte = bin(ageTe, minAge, maxAge, nbin);
+      const edgesA = BAtr.edges.slice(0,-1).map((e,i)=> `${Math.round(e)}-${Math.round(e+(maxAge-minAge)/nbin)}`);
+      mkDouble('chartAgeTT', edgesA, {label:'Train', data:BAtr.counts, borderWidth:1}, {label:'Test', data:BAte.counts, borderWidth:1});
+
+      const fareTr = faresT; // already prepared
+      const fareTe = test.map(r=> toNum(r.Fare)).filter(Number.isFinite);
+      const logsTe = fareTe.map(v=> Math.log10(Math.max(v,1e-9)));
+      const HBTe = bin(logsTe, Math.floor(Math.min(...logsTe.concat(logsT))), Math.ceil(Math.max(...logsTe.concat(logsT))), 30);
+      const HBT = bin(logsT, Math.floor(Math.min(...logsTe.concat(logsT))), Math.ceil(Math.max(...logsTe.concat(logsT))), 30);
+      const labelsF = HBT.edges.slice(0,-1).map((e,i)=> (10**HBT.edges[i]).toFixed(2));
+      mkDouble('chartFareTT', labelsF, {label:'Train', data:HBT.counts, borderWidth:1}, {label:'Test', data:HBTe.counts, borderWidth:1});
+
+      const pcT = valueCounts(train,'Pclass');
+      const pcE = valueCounts(test,'Pclass');
+      const keysPC = Array.from(new Set(pcT.map(d=> String(d.key)).concat(pcE.map(d=> String(d.key))))).sort();
+      mkDouble('chartPclassTT', keysPC,
+        {label:'Train', data: keysPC.map(k=> (pcT.find(d=> String(d.key)===k)?.val)||0), borderWidth:1},
+        {label:'Test', data: keysPC.map(k=> (pcE.find(d=> String(d.key)===k)?.val)||0), borderWidth:1}
+      );
+
+      const sxT = valueCounts(train,'Sex');
+      const sxE = valueCounts(test,'Sex');
+      const keysSX = Array.from(new Set(sxT.map(d=> String(d.key)).concat(sxE.map(d=> String(d.key))))).sort();
+      mkDouble('chartSexTT', keysSX,
+        {label:'Train', data: keysSX.map(k=> (sxT.find(d=> String(d.key)===k)?.val)||0), borderWidth:1},
+        {label:'Test', data: keysSX.map(k=> (sxE.find(d=> String(d.key)===k)?.val)||0), borderWidth:1}
+      );
+
+      const emT = valueCounts(train,'Embarked');
+      const emE = valueCounts(test,'Embarked');
+      const keysEM = Array.from(new Set(emT.map(d=> String(d.key)).concat(emE.map(d=> String(d.key))))).sort();
+      mkDouble('chartEmbarkedTT', keysEM,
+        {label:'Train', data: keysEM.map(k=> (emT.find(d=> String(d.key)===k)?.val)||0), borderWidth:1},
+        {label:'Test', data: keysEM.map(k=> (emE.find(d=> String(d.key)===k)?.val)||0), borderWidth:1}
+      );
+    } else {
+      document.getElementById('kpi-test-shape').textContent = '—';
+      document.querySelector('#tbl-miss-test tbody').innerHTML = '<tr><td colspan="3">No test.csv provided</td></tr>';
     }
 
-    // Correlation matrix
-    const numeric = cols.filter(c=> train.some(r=> Number.isFinite(toNumberOrNaN(r[c]))));
-    const C = corrMatrix(train, numeric);
-    const tbl = document.getElementById('tbl-corr');
-    // header
-    let thead = '<thead><tr><th></th>' + numeric.map(c=> `<th>${c}</th>`).join('') + '</tr></thead>';
-    let tbody = '<tbody>';
-    function colorFor(v){
-      if(!Number.isFinite(v)) return '#222';
-      // map -1..1 to color; negative = bluish, positive = reddish; intensity by |v|
-      const a = Math.min(1, Math.abs(v));
-      const r = v>0? Math.round(255*a) : 40;
-      const b = v<0? Math.round(255*a) : 40;
-      const g = 40;
-      return `rgb(${r},${g},${b})`;
-    }
-    for(let i=0;i<numeric.length;i++){
-      tbody += `<tr><th>${numeric[i]}</th>`;
-      for(let j=0;j<numeric.length;j++){
-        const v = C[i][j];
-        const bg = colorFor(v); const fg = Math.abs(v)>=0.5? '#fff':'#ddd';
-        tbody += `<td style="background:${bg}; color:${fg}">${Number.isFinite(v)? v.toFixed(2):''}</td>`;
-      }
-      tbody += '</tr>';
-    }
-    tbody += '</tbody>';
-    tbl.innerHTML = thead + tbody;
+    // high missing KPI (train)
+    const highMiss = missT.filter(x=> x.pct >= 0.30).map(x=> x.col).join(', ') || 'None';
+    document.getElementById('kpi-high-miss').textContent = highMiss;
 
-  }catch(err){
-    console.error(err);
-    alert('Error while loading or processing CSVs: ' + err.message + '\nMake sure your CSV paths in CONFIG match files placed next to index.html (or adjust).');
-  }
+    // generated timestamp
+    document.getElementById('kpi-generated').textContent = new Date().toISOString().slice(0,16).replace('T',' ');
+
+    statusEl.textContent = 'Done.';
+  } catch(e){
+    console.error(e); alert('EDA failed: '+e.message);
+  } finally { btn.disabled = false; }
 }
 
-run();
+function fillMiss(sel, data){
+  const tb = document.querySelector(sel+ ' tbody'); tb.innerHTML='';
+  for(const m of data){ const tr=document.createElement('tr'); tr.innerHTML = `<td>${m.col}</td><td>${m.missing}</td><td>${(m.pct*100).toFixed(2)}%</td>`; tb.appendChild(tr); }
+}
+
+function renderCorr(sel, cols, M){
+  const tbl = document.querySelector(sel); if(!cols.length){ tbl.innerHTML='<tbody><tr><td>No numeric columns found.</td></tr></tbody>'; return; }
+  let thead = '<thead><tr><th></th>' + cols.map(c=> `<th>${c}</th>`).join('') + '</tr></thead>';
+  let tbody = '<tbody>';
+  function colorFor(v){ if(!Number.isFinite(v)) return '#222'; const a=Math.min(1,Math.abs(v)); const r=v>0? Math.round(255*a):40; const b=v<0? Math.round(255*a):40; const g=40; return `rgb(${r},${g},${b})`; }
+  for(let i=0;i<cols.length;i++){
+    tbody += `<tr><th>${cols[i]}</th>`;
+    for(let j=0;j<cols.length;j++){
+      const v = M[i][j]; const bg=colorFor(v); const fg=Math.abs(v)>=0.5? '#fff':'#ddd';
+      tbody += `<td style="background:${bg}; color:${fg}">${Number.isFinite(v)? v.toFixed(2):''}</td>`;
+    }
+    tbody += '</tr>';
+  }
+  tbody += '</tbody>'; tbl.innerHTML = thead + tbody;
+}
 </script>
 </body>
 </html>
